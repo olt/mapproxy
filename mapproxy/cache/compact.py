@@ -109,7 +109,12 @@ class Bundle(TileCacheBase):
         idx = BundleIndex(self.base_filename + BUNDLEX_EXT)
         x, y = self._rel_tile_coord(tile.coord)
         offset = idx.tile_offset(x, y)
-        return offset != 0
+        if offset == 0:
+            return False
+
+        bundle = BundleData(self.base_filename + BUNDLE_EXT)
+        size = bundle.read_size(offset)
+        return size != 0
 
     def store_tile(self, tile):
         if tile.stored:
@@ -140,6 +145,8 @@ class Bundle(TileCacheBase):
 
         bundle = BundleData(self.base_filename + BUNDLE_EXT)
         data = bundle.read_tile(offset)
+        if not data:
+            return False
         tile.source = ImageSource(BytesIO(data))
 
         return True
@@ -157,6 +164,9 @@ class Bundle(TileCacheBase):
 BUNDLEX_GRID_WIDTH = 128
 BUNDLEX_GRID_HEIGHT = 128
 BUNDLEX_HEADER_SIZE = 16
+BUNDLEX_HEADER = b'\x03\x00\x00\x00\x10\x00\x00\x00\x00\x40\x00\x00\x05\x00\x00\x00'
+BUNDLEX_FOOTER_SIZE = 16
+BUNDLEX_FOOTER = b'\x00\x00\x00\x00\x10\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00'
 
 class BundleIndex(object):
     def __init__(self, filename):
@@ -167,7 +177,10 @@ class BundleIndex(object):
     def _init_index(self):
         ensure_directory(self.filename)
         fd = os.open(self.filename, os.O_WRONLY|os.O_CREAT|os.O_EXCL)
-        os.write(fd, b'\x00' * (BUNDLEX_HEADER_SIZE + 5 * BUNDLEX_GRID_WIDTH * BUNDLEX_GRID_HEIGHT))
+        os.write(fd, BUNDLEX_HEADER)
+        for i in range(BUNDLEX_GRID_WIDTH * BUNDLEX_GRID_HEIGHT):
+            os.write(fd, struct.pack('<Q', (i*4)+BUNDLE_HEADER_SIZE)[:5])
+        os.write(fd, BUNDLEX_FOOTER)
         os.close(fd)
 
     def _tile_offset(self, x, y):
@@ -199,7 +212,7 @@ class BundleIndex(object):
             f.seek(idx_offset)
             f.write(b'\x00' * 5)
 
-BUNDLE_HEADER_SIZE = 64
+BUNDLE_HEADER_SIZE = 60
 
 class BundleData(object):
     def __init__(self, filename):
@@ -211,12 +224,20 @@ class BundleData(object):
         ensure_directory(self.filename)
         fd = os.open(self.filename, os.O_WRONLY|os.O_CREAT|os.O_EXCL)
         os.write(fd, b'\x00' * BUNDLE_HEADER_SIZE)
+        os.write(fd, b'\x00' * BUNDLEX_GRID_HEIGHT * BUNDLEX_GRID_WIDTH * 4)
         os.close(fd)
+
+    def read_size(self, offset):
+        with open(self.filename, 'rb') as f:
+            f.seek(offset)
+            return struct.unpack('<L', f.read(4))[0]
 
     def read_tile(self, offset):
         with open(self.filename, 'rb') as f:
             f.seek(offset)
             size = struct.unpack('<L', f.read(4))[0]
+            if size <= 0:
+                return False
             return f.read(size)
 
     def append_tile(self, data):
