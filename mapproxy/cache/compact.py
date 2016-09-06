@@ -213,6 +213,12 @@ class BundleIndex(object):
             f.write(b'\x00' * 5)
 
 BUNDLE_HEADER_SIZE = 60
+BUNDLE_HEADER = (
+    b'\x03\x00\x00\x00\x00\x40\x00\x00\x9c\x7a\x00\x00\x05\x00\x00\x00' +
+    b'\x10\x00\x00\x00\x00\x00\x00\x00\xd5\xd2\x02\x00\x00\x00\x00\x00' +
+    b'\x28\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00' +
+    b'\x7f\x00\x00\x00\x00\x00\x00\x00\x7f\x00\x00\x00'
+)
 
 class BundleData(object):
     def __init__(self, filename):
@@ -223,7 +229,7 @@ class BundleData(object):
     def _init_bundle(self):
         ensure_directory(self.filename)
         fd = os.open(self.filename, os.O_WRONLY|os.O_CREAT|os.O_EXCL)
-        os.write(fd, b'\x00' * BUNDLE_HEADER_SIZE)
+        os.write(fd, BUNDLE_HEADER)
         os.write(fd, b'\x00' * BUNDLEX_GRID_HEIGHT * BUNDLEX_GRID_WIDTH * 4)
         os.close(fd)
 
