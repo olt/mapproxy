@@ -49,8 +49,7 @@ class CompactCache(TileCacheBase):
         c = x // BUNDLEX_GRID_WIDTH * BUNDLEX_GRID_WIDTH
         r = y // BUNDLEX_GRID_HEIGHT * BUNDLEX_GRID_HEIGHT
 
-        basename = 'R%04dC%04d' % (r, c)
-
+        basename = 'R%04xC%04x' % (r, c)
         return Bundle(os.path.join(level_dir, basename))
 
     def is_cached(self, tile):
@@ -87,7 +86,7 @@ class CompactCache(TileCacheBase):
         # pass
 
 BUNDLE_EXT = '.bundle'
-BUNDLEX_EXT = '.bundlex'
+BUNDLEX_EXT = '.bundlx'
 
 class Bundle(TileCacheBase):
     supports_timestamp = False
@@ -172,13 +171,12 @@ class BundleIndex(object):
         os.close(fd)
 
     def _tile_offset(self, x, y):
-        return BUNDLEX_HEADER_SIZE + (x + BUNDLEX_GRID_WIDTH * y) * 5
+        return BUNDLEX_HEADER_SIZE + (x * BUNDLEX_GRID_HEIGHT + y) * 5
 
     def tile_offset(self, x, y):
         idx_offset = self._tile_offset(x, y)
         try:
             with open(self.filename, 'rb') as f:
-                f.seek(idx_offset)
                 f.seek(idx_offset)
                 offset = struct.unpack('<Q', f.read(5) + b'\x00\x00\x00')[0]
             return offset
@@ -217,7 +215,7 @@ class BundleData(object):
 
     def read_tile(self, offset):
         with open(self.filename, 'rb') as f:
-            f.seek(offset-4)
+            f.seek(offset)
             size = struct.unpack('<L', f.read(4))[0]
             return f.read(size)
 
@@ -231,5 +229,5 @@ class BundleData(object):
                 offset = 16
             f.write(struct.pack('<L', size))
             f.write(data)
-        return offset+4, size
+        return offset, size
 
