@@ -227,7 +227,7 @@ class BundleData(object):
     def _init_bundle(self):
         ensure_directory(self.filename)
         write_atomic(self.filename,
-            BUNDLE_HEADER + ('\x00' * BUNDLEX_GRID_HEIGHT * BUNDLEX_GRID_WIDTH * 4))
+            BUNDLE_HEADER + (b'\x00' * BUNDLEX_GRID_HEIGHT * BUNDLEX_GRID_WIDTH * 4))
 
     def read_size(self, offset):
         with open(self.filename, 'rb') as f:
